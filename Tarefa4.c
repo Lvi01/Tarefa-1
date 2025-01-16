@@ -12,12 +12,15 @@
 #define COL4 4
 
 // Definição dos pinos dos LEDs
-#define LED_VERMELHO 28
-#define LED_VERDE 22
-#define LED_AZUL 18
+#define LED_RED 28
+#define LED_GREEN 22
+#define LED_BLUE 18
+
+// Definição do pino do Buzzer
+#define BUZZER 10
 
 // Mapeamento das teclas do Keypad
-const char teclas[4][4] = {
+const char keys[4][4] = {
     {'1', '2', '3', 'A'},
     {'4', '5', '6', 'B'},
     {'7', '8', '9', 'C'},
@@ -25,12 +28,10 @@ const char teclas[4][4] = {
 };
 
 // Variável para armazenar o LED atualmente aceso
-int led_atual = -1;
+int current_led = -1;
 
-/**
- * @brief Configura os GPIOs para o teclado e LEDs.
- */
-void configurar_gpio() {
+// Função para configurar os GPIOs
+void setup_gpio() {
     // Configurando as linhas (ROW) como saídas
     gpio_init(ROW1);
     gpio_init(ROW2);
@@ -56,74 +57,78 @@ void configurar_gpio() {
     gpio_pull_up(COL4);
 
     // Configurando os LEDs como saída
-    gpio_init(LED_VERMELHO);
-    gpio_init(LED_VERDE);
-    gpio_init(LED_AZUL);
-    gpio_set_dir(LED_VERMELHO, GPIO_OUT);
-    gpio_set_dir(LED_VERDE, GPIO_OUT);
-    gpio_set_dir(LED_AZUL, GPIO_OUT);
+    gpio_init(LED_RED);
+    gpio_init(LED_GREEN);
+    gpio_init(LED_BLUE);
+    gpio_set_dir(LED_RED, GPIO_OUT);
+    gpio_set_dir(LED_GREEN, GPIO_OUT);
+    gpio_set_dir(LED_BLUE, GPIO_OUT);
 
     // Inicialmente, desligar todos os LEDs
-    gpio_put(LED_VERMELHO, 0);
-    gpio_put(LED_VERDE, 0);
-    gpio_put(LED_AZUL, 0);
+    gpio_put(LED_RED, 0);
+    gpio_put(LED_GREEN, 0);
+    gpio_put(LED_BLUE, 0);
+
+    // Configurando o buzzer como saída
+    gpio_init(BUZZER);
+    gpio_set_dir(BUZZER, GPIO_OUT);
+    gpio_put(BUZZER, 0); // Buzzer inicialmente desligado
 }
 
-/**
- * @brief Verifica qual tecla do teclado matricial foi pressionada.
- * 
- * @return char A tecla pressionada ou '\0' se nenhuma tecla for pressionada.
- */
-char escanear_teclado() {
+// Função para verificar qual tecla foi pressionada
+char scan_keypad() {
     // Iterando pelas linhas
-    for (int linha = 0; linha < 4; linha++) {
+    for (int row = 0; row < 4; row++) {
         // Definir a linha atual como LOW e as outras como HIGH
-        gpio_put(ROW1, linha == 0 ? 0 : 1);
-        gpio_put(ROW2, linha == 1 ? 0 : 1);
-        gpio_put(ROW3, linha == 2 ? 0 : 1);
-        gpio_put(ROW4, linha == 3 ? 0 : 1);
+        gpio_put(ROW1, row == 0 ? 0 : 1);
+        gpio_put(ROW2, row == 1 ? 0 : 1);
+        gpio_put(ROW3, row == 2 ? 0 : 1);
+        gpio_put(ROW4, row == 3 ? 0 : 1);
 
         // Verificar cada coluna
-        if (!gpio_get(COL1)) return teclas[linha][0];
-        if (!gpio_get(COL2)) return teclas[linha][1];
-        if (!gpio_get(COL3)) return teclas[linha][2];
-        if (!gpio_get(COL4)) return teclas[linha][3];
+        if (!gpio_get(COL1)) return keys[row][0];
+        if (!gpio_get(COL2)) return keys[row][1];
+        if (!gpio_get(COL3)) return keys[row][2];
+        if (!gpio_get(COL4)) return keys[row][3];
     }
     // Retornar '\0' se nenhuma tecla for pressionada
     return '\0';
 }
 
-/**
- * @brief Controla os LEDs com base na tecla pressionada.
- * 
- * @param tecla A tecla pressionada.
- */
-void controlar_led(char tecla) {
+// Função para controlar os LEDs e o buzzer
+void control_device(char key) {
     // Desligar o LED atualmente aceso, se houver
-    if (led_atual != -1) {
-        gpio_put(led_atual, 0);
-        led_atual = -1;
+    if (current_led != -1) {
+        gpio_put(current_led, 0);
+        current_led = -1;
     }
 
-    // Acender o LED correspondente à tecla pressionada
-    switch (tecla) {
+    // Controlar dispositivos com base na tecla pressionada
+    switch (key) {
         case '1':
-            gpio_put(LED_VERMELHO, 1);
-            led_atual = LED_VERMELHO;
+            gpio_put(LED_RED, 1);
+            current_led = LED_RED;
             printf("Tecla 1 pressionada, LED vermelho ligado.\n");
             break;
         case '2':
-            gpio_put(LED_VERDE, 1);
-            led_atual = LED_VERDE;
+            gpio_put(LED_GREEN, 1);
+            current_led = LED_GREEN;
             printf("Tecla 2 pressionada, LED verde ligado.\n");
             break;
         case '3':
-            gpio_put(LED_AZUL, 1);
-            led_atual = LED_AZUL;
+            gpio_put(LED_BLUE, 1);
+            current_led = LED_BLUE;
             printf("Tecla 3 pressionada, LED azul ligado.\n");
             break;
+        case 'B':
+            gpio_put(BUZZER, 1);
+            printf("Tecla B pressionada, buzzer ativado.\n");
+            sleep_ms(2000); // Emitir som por 500 ms
+            gpio_put(BUZZER, 0);
+            printf("Buzzer desativado.\n");
+            break;
         default:
-            printf("Tecla %c pressionada, todos os LEDs desligados.\n", tecla);
+            printf("Tecla %c pressionada, todos os LEDs desligados.\n", key);
             break;
     }
 }
@@ -131,19 +136,29 @@ void controlar_led(char tecla) {
 int main() {
     // Inicializar o sistema padrão e configurar GPIOs
     stdio_init_all();
-    configurar_gpio();
+    setup_gpio();
 
     // Instruções iniciais sobre o programa
-    printf("Essa simulação controla os LEDs RGB usando um teclado matricial 4x4.\n");
-    printf("Aperte as seguintes teclas para controlar os LEDs:\n");
+    printf("Essa simulação controla os LEDs RGB e um buzzer usando um teclado matricial 4x4.\n");
+    printf("Aperte as seguintes teclas para controlar os dispositivos:\n");
     printf("  - Tecla '1': Acende o LED vermelho.\n");
     printf("  - Tecla '2': Acende o LED verde.\n");
     printf("  - Tecla '3': Acende o LED azul.\n");
+    printf("  - Tecla 'B': Emite som no buzzer.\n");
     printf("Qualquer outra tecla irá apagar todos os LEDs.\n");
 
     while (true) {
-        char tecla = escanear_teclado();
-        controlar_led(tecla);
-        sleep_ms(100);
+        char key = scan_keypad(); // Ler o keypad
+
+        if (key != '\0') { // Se uma tecla foi pressionada
+            control_device(key); // Controlar dispositivos com base na tecla
+
+            // Aguardar a liberação da tecla
+            while (scan_keypad() != '\0') {
+                sleep_ms(10);
+            }
+        }
+
+        sleep_ms(50); // Pequeno atraso para evitar leituras incorretas
     }
 }
