@@ -123,7 +123,7 @@ void control_device(char key) {
         case 'B':
             gpio_put(BUZZER, 1);
             printf("Tecla B pressionada, buzzer ativado.\n");
-            sleep_ms(2000); // Emitir som por 500 ms
+            sleep_ms(2000); // Emitir som por 2 segundos
             gpio_put(BUZZER, 0);
             printf("Buzzer desativado.\n");
             break;
