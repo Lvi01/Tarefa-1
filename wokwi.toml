@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+firmware = 'build/Tarefa4.uf2'
+elf = 'build/Tarefa4.elf'
+gdbServerPort=3333
